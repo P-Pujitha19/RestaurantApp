@@ -1,5 +1,8 @@
 import {Component} from 'react'
+import {withRouter} from 'react-router-dom'
 import {FaShoppingCart} from 'react-icons/fa'
+import Cookies from 'js-cookie'
+import {CartContext} from '../../context/CartContext'
 import TabBar from '../TabBar'
 import DishList from '../DishList'
 
@@ -7,7 +10,7 @@ class Restaurant extends Component {
   state = {
     menuData: [],
     activeCategoryIndex: 0,
-    cartCount: {},
+    restaurantName: '',
   }
 
   componentDidMount() {
@@ -27,46 +30,52 @@ class Restaurant extends Component {
     }
   }
 
+  onLogout = () => {
+    const {history} = this.props
+    Cookies.remove('jwt_token')
+    history.replace('/login')
+  }
+
+  onCartClick = () => {
+    const {history} = this.props
+    history.push('/cart')
+  }
+
+  onTitleClick = () => {
+    const {history} = this.props
+    history.push('/')
+  }
+
   handleTabClick = index => {
     this.setState({activeCategoryIndex: index})
   }
 
-  updateCount = (dishId, change) => {
-    this.setState(prevState => {
-      const currentCount = prevState.cartCount[dishId] || 0
-      const newCount = Math.max(currentCount + change, 0)
-      return {
-        cartCount: {
-          ...prevState.cartCount,
-          [dishId]: newCount,
-        },
-      }
-    })
-  }
-
-  getTotalItems = () => {
-    const {cartCount} = this.state
-    return Object.values(cartCount).reduce((total, count) => total + count, 0)
-  }
-
   render() {
-    const {menuData, activeCategoryIndex, cartCount, restaurantName} =
-      this.state
+    const {cartList} = this.context
+    const {menuData, activeCategoryIndex, restaurantName} = this.state
 
-    const totalItems = this.getTotalItems()
+    const totalItems = cartList.reduce((acc, item) => acc + item.quantity, 0)
     const activeCategory = menuData[activeCategoryIndex] || {}
 
     return (
       <div className="restaurant-container">
         <header className="header">
-          <h1>{restaurantName}</h1>
+          <h1 onClick={this.onTitleClick}>{restaurantName}</h1>
 
-          <div className="cart-icon">
-            <p>My Orders</p>
-
+          <div
+            className="cart-icon"
+            data-testid="cart"
+            onClick={this.onCartClick}
+            role="button"
+            tabIndex="0"
+          >
             <FaShoppingCart size={24} />
             {totalItems > 0 && <span className="cart-badge">{totalItems}</span>}
           </div>
+
+          <button type="button" onClick={this.onLogout}>
+            Logout
+          </button>
         </header>
 
         {menuData.length > 0 ? (
@@ -79,11 +88,7 @@ class Restaurant extends Component {
               />
             </ul>
             <ul>
-              <DishList
-                dishes={activeCategory.category_dishes || []}
-                cartCount={cartCount}
-                updateCount={this.updateCount}
-              />
+              <DishList dishes={activeCategory.category_dishes || []} />
             </ul>
           </>
         ) : (
@@ -94,4 +99,6 @@ class Restaurant extends Component {
   }
 }
 
-export default Restaurant
+Restaurant.contextType = CartContext
+
+export default withRouter(Restaurant)
